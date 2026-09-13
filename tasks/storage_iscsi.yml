@@ -1,0 +1,27 @@
+---
+- name: Make sure open-iscsi is installed on all nodes
+  ansible.builtin.package:
+    name: open-iscsi
+    state: present
+  when: pve_config_iscsi_targets is defined
+
+- name: Configure iSCSI targets on all nodes
+  community.general.open_iscsi:
+    auto_node_startup: "{{ item.auto_node_startup | default(true) }}"
+    auto_portal_startup: "{{ item.auto_portal_startup | default(true) }}"
+    discover: "{{ item.discover | default(false) }}"
+    login: "{{ item.login | default(false) }}"
+    node_auth: "{{ item.node_auth | default(omit) }}"
+    node_pass: "{{ item.node_pass | default(omit) }}"
+    node_pass_in: "{{ item.node_pass_in | default(omit) }}"
+    node_user: "{{ item.node_user | default(omit) }}"
+    node_user_in: "{{ item.node_user_in | default(omit) }}"
+    port: "{{ item.port | default(3260) }}"
+    portal: "{{ item.portal | default(omit) }}"
+    rescan: "{{ item.rescan | default(false) }}"
+    show_nodes: "{{ item.show_nodes | default(false) }}"
+    target: "{{ item.target | default(omit) }}"
+  loop: "{{ pve_config_iscsi_targets | default([]) }}"
+  no_log: "{{ pve_config_nolog }}"
+  when: pve_config_iscsi_targets is defined
+...

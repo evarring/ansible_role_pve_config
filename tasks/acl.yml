@@ -1,0 +1,16 @@
+---
+- name: Create ACL
+  community.proxmox.proxmox_access_acl:
+    api_host: "{{ ansible_host }}"
+    api_user: "{{ ansible_user }}@pam"
+    api_password: "{{ ansible_password }}"
+    path: "{{ item.path }}"
+    type: "{{ item.type | default(omit) }}"
+    ugid: "{{ item.ugid | default(omit) }}"
+    roleid: "{{ item.roleid | default(omit) }}"
+    validate_certs: false
+    propagate: "{{ item.propagate | default(true) }}"
+    state: "{{ item.state | default('present') }}"
+  delegate_to: localhost
+  loop: "{{ pve_config_acls | default([]) }}"
+...

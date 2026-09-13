@@ -1,0 +1,244 @@
+# SPDX-License-Identifier: MIT-0
+---
+# tasks file for pve_config
+
+- name: Configure nodes
+  ansible.builtin.include_tasks: node.yml
+  tags: node
+  args:
+    apply:
+      tags:
+        - node
+
+- name: Configure repositories per host
+  ansible.builtin.include_tasks: repos.yml
+  tags: update, repo
+  args:
+    apply:
+      tags:
+        - repo
+        - update
+
+- name: Update Proxmox VE packages per host
+  ansible.builtin.include_tasks: update.yml
+  tags: update, never
+  args:
+    apply:
+      tags:
+        - update
+        - never
+
+- name: Install needed extra packages per host
+  ansible.builtin.include_tasks: packages.yml
+  tags: update, packages
+  args:
+    apply:
+      tags:
+        - update
+        - packages
+
+- name: Cluster master and node info activities
+  when: pve_config_cluster_enabled is true
+  tags: cluster, always
+  block:
+    - name: Get master ip and secondary node info from inventory
+      ansible.builtin.set_fact:
+        pve_config_temp_master_host: "{{ groups[pve_config_host_group][0] }}"
+        pve_config_temp_join_hosts: "{{ groups[pve_config_host_group][1:] }}"
+        pve_config_temp_master_ip: "{{ hostvars[groups[pve_config_host_group][0]].ansible_host | default(groups[pve_config_host_group][0]) }}"
+        pve_config_temp_join_ip_map: >-
+          {{
+            dict(
+              groups[pve_config_host_group][1:] |
+              zip(groups[pve_config_host_group][1:] |
+                  map('extract', hostvars, 'ansible_host') |
+                  map('default', None) |
+                  list)
+            )
+          }}
+      when: pve_config_host_group is defined
+
+    - name: Print out defined vars for double-checking
+      ansible.builtin.debug:
+        msg:
+          - "Master host name: {{ pve_config_temp_master_host }}"
+          - "Master host IP: {{ pve_config_temp_master_ip }}"
+          - "Secondary hosts names: {{ pve_config_temp_join_hosts }}"
+          - "Secondary host or hosts IPs: {{ pve_config_temp_join_ip_map }}"
+        verbosity: 1
+
+- name: Cluster creation and join actions
+  when: pve_config_cluster_enabled is true
+  tags: cluster, never
+  block:
+    - name: Cluster creation
+      ansible.builtin.include_tasks: cluster_create.yml
+      args:
+        apply:
+          tags:
+            - cluster
+      when: pve_config_temp_master_host == inventory_hostname
+
+    - name: Cluster join
+      ansible.builtin.include_tasks: cluster_join.yml
+      when: pve_config_temp_master_host == inventory_hostname
+      loop: "{{ pve_config_temp_join_hosts }}"
+      loop_control:
+        loop_var: pve_join_host
+      vars:
+        pve_join_ip: "{{ hostvars[pve_join_host].ansible_host | default(pve_join_host) }}"
+      args:
+        apply:
+          tags:
+            - cluster
+
+- name: Set master host to target host if cluster not enabled
+  ansible.builtin.set_fact:
+    pve_config_temp_master_host: "{{ inventory_hostname }}"
+  when: pve_config_cluster_enabled is false
+  tags: always
+
+- name: Configure pools
+  ansible.builtin.include_tasks: pools.yml
+  tags: pool
+  args:
+    apply:
+      tags:
+        - pool
+  when:
+    - pve_config_pools is defined
+    - pve_config_temp_master_host == inventory_hostname
+
+- name: Configure SDN
+  ansible.builtin.include_tasks: sdn.yml
+  tags: sdn
+  args:
+    apply:
+      tags:
+        - sdn
+  when:
+    - pve_config_temp_master_host == inventory_hostname
+
+- name: Configure user roles
+  ansible.builtin.include_tasks: user_roles.yml
+  tags: user_roles
+  args:
+    apply:
+      tags:
+        - user_roles
+  when:
+    - pve_config_user_roles is defined
+    - pve_config_temp_master_host == inventory_hostname
+
+- name: Configure user groups
+  ansible.builtin.include_tasks: user_groups.yml
+  tags: usergroup
+  args:
+    apply:
+      tags:
+        - usergroup
+  when:
+    - pve_config_user_groups is defined
+    - pve_config_temp_master_host == inventory_hostname
+
+- name: Realms config
+  ansible.builtin.include_tasks: realms_config.yml
+  when:
+    - pve_config_temp_master_host == inventory_hostname
+    - pve_config_realms is defined
+  tags: realms
+  args:
+    apply:
+      tags:
+        - realms
+
+- name: Sync realms
+  ansible.builtin.include_tasks: realms_sync.yml
+  when:
+    - pve_config_temp_master_host == inventory_hostname
+    - pve_config_realms is defined
+  tags: realms_sync
+  args:
+    apply:
+      tags:
+        - realms_sync
+
+- name: Configure ACLs
+  ansible.builtin.include_tasks: acl.yml
+  tags: acl
+  args:
+    apply:
+      tags:
+        - acl
+  when:
+    - pve_config_acls is defined
+    - pve_config_temp_master_host == inventory_hostname
+
+- name: Configure linux realm users per host
+  ansible.builtin.include_tasks: user_linux.yml
+  tags: user
+  args:
+    apply:
+      tags:
+        - user
+  when:
+    - pve_config_users_linux is defined
+
+- name: Configure Proxmox VE realm users
+  ansible.builtin.include_tasks: user_pve.yml
+  tags: user
+  args:
+    apply:
+      tags:
+        - user
+  when:
+    - pve_config_users_pve is defined
+    - pve_config_temp_master_host == inventory_hostname
+
+- name: Configure local enclosure volumes per host
+  ansible.builtin.include_tasks: storage_local.yml
+  tags: storagelocal, never
+  args:
+    apply:
+      tags:
+        - storagelocal
+
+- name: Configure iSCSI backend
+  ansible.builtin.include_tasks: storage_iscsi.yml
+  tags: storageiscsi, never
+  when: pve_config_iscsi_targets is defined
+  args:
+    apply:
+      tags:
+        - storageiscsi
+        - never
+
+- name: Configure Proxmox VE Datacenter storage definitions
+  ansible.builtin.include_tasks: storage_datacenter.yml
+  tags: pvestorage, never
+  args:
+    apply:
+      tags:
+        - pvestorage
+  when:
+    - pve_config_storage is defined
+    - pve_config_temp_master_host == inventory_hostname
+
+- name: Configure NTP servers per host
+  ansible.builtin.include_tasks: time.yml
+  tags: time
+  args:
+    apply:
+      tags:
+        - time
+
+- name: Configure HA resources and rules
+  ansible.builtin.include_tasks: ha.yml
+  tags: ha, never
+  args:
+    apply:
+      tags:
+        - ha
+  when:
+    - pve_config_temp_master_host == inventory_hostname
+...

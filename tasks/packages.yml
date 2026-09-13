@@ -1,0 +1,7 @@
+---
+- name: Install extra packages
+  ansible.builtin.apt:
+    name: "{{ item.name }}"
+    state: "{{ item.state | default('present') }}"
+  loop: "{{ pve_config_extra_packages | default([]) }}"
+...

@@ -1,0 +1,11 @@
+---
+- name: Upgrade all apt packages
+  ansible.builtin.apt:
+    upgrade: dist
+  register: pve_config_temp_apt_upgrade
+  notify: Reboot host
+
+- name: Flush handlers
+  ansible.builtin.meta: flush_handlers
+  when: pve_config_temp_apt_upgrade.changed # noqa: no-handler
+...

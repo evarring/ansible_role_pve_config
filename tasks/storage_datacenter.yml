@@ -1,0 +1,33 @@
+---
+- name: Configure Proxmox VE storage definitions
+  community.proxmox.proxmox_storage:
+    api_host: "{{ ansible_host }}"
+    api_user: "{{ ansible_user }}@pam"
+    api_password: "{{ ansible_password }}"
+    validate_certs: false
+    name: "{{ item.name }}"
+    type: "{{ item.type }}"
+    nodes: "{{ item.nodes | default(omit) }}"
+    shared: "{{ item.shared | default(omit) }}"
+    disable: "{{ item.disable | default(omit) }}"
+    bwlimit: "{{ item.bwlimit | default(omit) }}"
+    btrfs_options: "{{ item.btrfs_options | default(omit) }}"
+    esxi_options: "{{ item.esxi_options | default(omit) }}"
+    content: "{{ item.content | default(omit) }}"
+    iscsi_options: "{{ item.iscsi_options | default(omit) }}"
+    iscsidirect_options: "{{ item.iscsidirect_options | default(omit) }}"
+    pbs_options: "{{ item.pbs_options | default(omit) }}"
+    nfs_options: "{{ item.nfs_options | default(omit) }}"
+    cephfs_options: "{{ item.cephfs_options | default(omit) }}"
+    dir_options: "{{ item.dir_options | default(omit) }}"
+    cifs_options: "{{ item.cifs_options | default(omit) }}"
+    zfs_options: "{{ item.zfs_options | default(omit) }}"
+    zfspool_options: "{{ item.zfspool_options | default(omit) }}"
+    lvm_options: "{{ item.lvm_options | default(omit) }}"
+    lvmthin_options: "{{ item.lvmthin_options | default(omit) }}"
+    rbd_options: "{{ item.rbd_options | default(omit) }}"
+    state: "{{ item.state | default('present') }}"
+  no_log: "{{ pve_config_nolog }}"
+  loop: "{{ pve_config_storage | default([]) }}"
+  delegate_to: localhost
+...

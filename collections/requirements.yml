@@ -1,0 +1,6 @@
+---
+collections:
+  - name: git+https://github.com/ansible-collections/community.proxmox
+    type: git
+  - name: community.general
+...

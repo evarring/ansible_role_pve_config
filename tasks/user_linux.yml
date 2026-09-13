@@ -1,0 +1,33 @@
+---
+- name: Configure linux realm users
+  block:
+    - name: Configure user
+      ansible.builtin.user:
+        name: "{{ item.name }}"
+        comment: "{{ item.comment | default(omit) }}"
+        shell: "{{ item.shell | default(omit) }}"
+        groups: "{{ item.groups | default(omit) }}"
+        append: "{{ item.append | default(false) }}"
+        password: "{{ (item.password | password_hash('sha512')) if item.password is defined else omit }}"
+        update_password: "{{ item.update_password | default('on_create') }}"
+        state: "{{ item.state | default('present') }}"
+        create_home: "{{ item.create_home | default(true) }}"
+      loop: "{{ pve_config_users_linux | default([]) }}"
+      no_log: "{{ pve_config_nolog }}"
+
+    - name: Ensure the sudoers.d directory exists
+      ansible.builtin.file:
+        path: /etc/sudoers.d
+        state: directory
+        mode: '0750'
+
+    - name: Grant additional sudo rights
+      community.general.sudoers:
+        name: "ansible-managed"
+        user: "{{ item.name }}"
+        runas: "{{ item.sudo_rights.runas | default(omit) }}"
+        commands: "{{ item.sudo_rights.commands | default(omit) }}"
+        nopassword: "{{ item.sudo_rights.nopassword | default(omit) }}"
+        state: "{{ item.state | default('present') }}"
+      loop: "{{ pve_config_users_linux | default([]) }}"
+...

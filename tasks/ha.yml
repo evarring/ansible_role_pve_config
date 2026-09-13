@@ -1,0 +1,33 @@
+---
+- name: Add manual HA resources
+  community.proxmox.proxmox_cluster_ha_resources:
+    api_host: "{{ ansible_host }}"
+    api_user: "{{ ansible_user }}@pam"
+    api_password: "{{ ansible_password }}"
+    name: "{{ item.name }}"
+    comment: "{{ item.comment | default(omit) }}"
+    hastate: "{{ item.hastate | default('started') }}"
+    state: "{{ item.state | default('present') }}"
+    validate_certs: false
+    group: "{{ item.group | default(omit) }}"
+    max_relocate: "{{ item.max_relocate | default(2) }}"
+    max_restart: "{{ item.max_restart | default(2) }}"
+  delegate_to: localhost
+  loop: "{{ pve_config_ha_resources | default([]) }}"
+
+- name: Configure HA rules
+  community.proxmox.proxmox_cluster_ha_rules:
+    api_host: "{{ ansible_host }}"
+    api_user: "{{ ansible_user }}@pam"
+    api_password: "{{ ansible_password }}"
+    name: "{{ item.name }}"
+    state: "{{ item.state | default('present') }}"
+    type: "{{ item.type }}"
+    comment: "{{ item.comment }}"
+    affinity: "{{ item.affinity }}"
+    nodes: "{{ item.nodes | default(omit) }}"
+    resources: "{{ item.resources | default(omit) }}"
+    disable: "{{ item.disable | default(false) }}"
+  delegate_to: localhost
+  loop: "{{ pve_config_ha_rules | default([]) }}"
+...

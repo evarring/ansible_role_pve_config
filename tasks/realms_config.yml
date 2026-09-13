@@ -1,0 +1,52 @@
+---
+- name: Configure authentication realms
+  community.proxmox.proxmox_domain:
+    api_host: "{{ ansible_host }}"
+    api_user: "{{ ansible_user }}@pam"
+    api_password: "{{ ansible_password }}"
+    validate_certs: false
+    realm: "{{ item.realm | default(omit) }}"
+    state: "{{ item.state | default('present') }}"
+    type: "{{ item.type | default(omit) }}"
+    comment: "{{ item.comment | default(omit) }}"
+    default: "{{ item.default | default(omit) }}"
+    # LDAP
+    ldap_base_dn: "{{ item.ldap_base_dn | default(omit) }}"
+    ldap_bind_dn: "{{ item.ldap_bind_dn | default(omit) }}"
+    ldap_filter: "{{ item.ldap_filter | default(omit) }}"
+    ldap_group_classes: "{{ item.ldap_group_classes | default(omit) }}"
+    ldap_group_filter: "{{ item.ldap_group_filter | default(omit) }}"
+    ldap_group_name_attr: "{{ item.ldap_group_name_attr | default(omit) }}"
+    ldap_mode: "{{ item.ldap_mode | default(omit) }}"
+    ldap_password: "{{ item.ldap_password | default(omit) }}"
+    ldap_port: "{{ item.ldap_port | default(omit) }}"
+    ldap_primary_server: "{{ item.ldap_primary_server | default(omit) }}"
+    ldap_secondary_server: "{{ item.ldap_secondary_server | default(omit) }}"
+    ldap_user_classes: "{{ item.ldap_user_classes | default(omit) }}"
+    ldap_user_attr: "{{ item.ldap_user_attr | default(omit) }}"
+    ldap_validate_certs: "{{ item.ldap_validate_certs | default(omit) }}"
+    ldap_sync_defaults_options: "{{ item.ldap_sync_default_options | default(omit) }}"
+    # AD
+    ad_domain: "{{ item.ad_domain | default(omit) }}"
+    ad_case_sensitive: "{{ item.ad_case_sensitive | default(omit) }}"
+    ad_mode: "{{ item.ad_mode | default(omit) }}"
+    ad_password: "{{ item.ad_password | default(omit) }}"
+    ad_primary_server: "{{ item.ad_primary_server | default(omit) }}"
+    ad_sync_defaults_options: "{{ item.ad_sync_defaults_options | default(omit) }}"
+    # OpenID
+    openid_acr_values: "{{ item.openid_acr_values | default(omit) }}"
+    openid_autocreate: "{{ item.openid_autocreate | default(omit) }}"
+    openid_client_id: "{{ item.openid_client_id | default(omit) }}"
+    openid_client_key: "{{ item.openid_client_key | default(omit) }}"
+    openid_groups_autocreate: "{{ item.openid_groups_autocreate | default(omit) }}"
+    openid_groups_claim: "{{ item.openid_groups_claim | default(omit) }}"
+    openid_groups_overwrite: "{{ item.openid_groups_overwrite | default(omit) }}"
+    openid_issuer_url: "{{ item.openid_issuer_url | default(omit) }}"
+    openid_prompt: "{{ item.openid_prompt | default(omit) }}"
+    openid_query_userinfo: "{{ item.openid_query_userinfo | default(omit) }}"
+    openid_scopes: "{{ item.openid_scopes | default(omit) }}"
+    openid_username_claim: "{{ item.openid_username_claim | default(omit) }}"
+  loop: "{{ pve_config_realms | default([]) }}"
+  no_log: "{{ pve_config_nolog }}"
+  delegate_to: localhost
+...

@@ -1,0 +1,18 @@
+---
+- name: Create new Proxmox VE pool
+  community.proxmox.proxmox_pool:
+    api_host: "{{ ansible_host }}"
+    api_user: "{{ ansible_user }}@pam"
+    api_password: "{{ ansible_password }}"
+    poolid: "{{ item.poolid }}"
+    validate_certs: false
+    comment: "{{ item.comment }}"
+  loop: "{{ pve_config_pools | default([]) }}"
+  delegate_to: localhost
+  notify: Pause for 15 seconds
+  register: pve_config_temp_pool
+
+- name: Flush handlers immediately
+  ansible.builtin.meta: flush_handlers
+  when: pve_config_temp_pool.changed # noqa: no-handler
+...

@@ -1,0 +1,17 @@
+---
+- name: Configure Proxmox VE repositories
+  ansible.builtin.deb822_repository:
+    name: "{{ item.name }}"
+    types: "{{ item.types }}"
+    uris: "{{ item.uris }}"
+    suites: "{{ item.suites }}"
+    components: "{{ item.components }}"
+    signed_by: "{{ item.signed_by }}"
+    enabled: "{{ item.enabled }}"
+  loop: "{{ pve_config_repository }}"
+
+- name: Refresh apt cache
+  ansible.builtin.apt:
+    update_cache: true
+  changed_when: false
+...

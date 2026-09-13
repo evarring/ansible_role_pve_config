@@ -1,0 +1,12 @@
+---
+- name: Create new Proxmox VE user group
+  community.proxmox.proxmox_group:
+    api_host: "{{ ansible_host }}"
+    api_user: "{{ ansible_user }}@pam"
+    api_password: "{{ ansible_password }}"
+    name: "{{ item.name }}"
+    validate_certs: false
+    comment: "{{ item.comment }}"
+  loop: "{{ pve_config_user_groups | default([]) }}"
+  delegate_to: localhost
+...

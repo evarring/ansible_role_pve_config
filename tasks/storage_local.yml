@@ -1,0 +1,93 @@
+---
+- name: Configure local volumes
+  block:
+    - name: Configure volume groups
+      community.general.lvg:
+        vg: "{{ item.name }}"
+        pvs: "{{ item.pvs }}"
+        pesize: "{{ item.pesize | default(omit) }}"
+        vg_options: "{{ item.vg_options | default(omit) }}"
+        pv_options: "{{ item.pv_options | default(omit) }}"
+        state: "{{ item.state | default('present') }}"
+        force: "{{ item.force | default(omit) }}"
+      loop: "{{ pve_config_lvm_vgs | default([]) }}"
+      loop_control:
+        label: "{{ item.name }}"
+
+    - name: Configure thin pools
+      community.general.lvol:
+        vg: "{{ item.vg }}"
+        thinpool: "{{ item.thinpool }}"
+        size: "{{ item.size | default('97%PVS') }}"
+        opts: "{{ item.opts | default(omit) }}"
+        force: "{{ item.force | default(omit) }}"
+        metadata_size: "{{ item.metadata_size | default(omit) }}"
+        state: "{{ item.state | default('present') }}"
+      loop: "{{ pve_config_lvm_thinpools | default([]) }}"
+      loop_control:
+        label: "{{ item.vg }}/{{ item.thinpool }}"
+
+    - name: Configure thick logical volumes
+      community.general.lvol:
+        vg: "{{ item.vg }}"
+        lv: "{{ item.lv }}"
+        size: "{{ item.size | default(omit) }}"
+        opts: "{{ item.opts | default(omit) }}"
+        state: "{{ item.state | default('present') }}"
+        force: "{{ item.force | default(omit) }}"
+      loop: "{{ pve_config_lvm_lvs | default([]) }}"
+      loop_control:
+        label: "{{ item.vg }}/{{ item.lv }}"
+
+    - name: Configure thin logical volumes
+      community.general.lvol:
+        vg: "{{ item.vg }}"
+        lv: "{{ item.lv }}"
+        thinpool: "{{ item.thinpool }}"
+        size: "{{ item.size | default(omit) }}"
+        opts: "{{ item.opts | default(omit) }}"
+        state: "{{ item.state | default('present') }}"
+        force: "{{ item.force | default(omit) }}"
+      loop: "{{ pve_config_lvm_thinvols | default([]) }}"
+      loop_control:
+        label: "{{ item.vg }}/{{ item.thinpool }}/{{ item.lv }}"
+
+    - name: Configure filesystems
+      community.general.filesystem:
+        dev: "{{ item.dev }}"
+        fstype: "{{ item.fstype }}"
+        opts: "{{ item.opts | default(omit) }}"
+        state: "{{ item.state | default('present') }}"
+      loop: "{{ pve_config_lvm_filesystems | default([]) }}"
+      loop_control:
+        label: "{{ item.dev }}"
+
+    - name: Ensure mountpoints exist
+      ansible.builtin.file:
+        path: "{{ item.path }}"
+        state: directory
+        mode: "0755"
+      loop: "{{ pve_config_lvm_mounts | default([]) }}"
+      loop_control:
+        label: "{{ item.path }}"
+
+    - name: Configure mounts
+      ansible.posix.mount:
+        path: "{{ item.path }}"
+        src: "{{ item.src }}"
+        fstype: "{{ item.fstype }}"
+        opts: "{{ item.opts | default('defaults') }}"
+        state: "{{ item.state | default('mounted') }}"
+      loop: "{{ pve_config_lvm_mounts | default([]) }}"
+      loop_control:
+        label: "{{ item.path }}"
+
+- name: Extend root to max available
+  community.general.lvol:
+    vg: pve
+    lv: root
+    size: +100%FREE
+    shrink: false
+    resizefs: true
+  when: pve_config_extend_root | bool
+...

@@ -1,0 +1,13 @@
+---
+- name: Configure a Proxmox VE node
+  delegate_to: localhost
+  community.proxmox.proxmox_node:
+    api_host: "{{ ansible_host }}"
+    api_user: "{{ ansible_user }}@pam"
+    api_password: "{{ ansible_password }}"
+    validate_certs: false
+    certificates: "{{ pve_config_proxmox_certificates | default(omit) }}"
+    node_name: "{{ inventory_hostname.split('.')[0] }}"
+    dns: "{{ pve_config_dns | default(omit) }}"
+    subscription: "{{ pve_config_subscription | default(omit) }}"
+...

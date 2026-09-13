@@ -1,0 +1,37 @@
+---
+- name: Check if join target is already in a cluster
+  ansible.builtin.stat:
+    path: /etc/pve/corosync.conf
+  register: pve_config_temp_in_cluster
+  delegate_to: "{{ pve_join_host }}"
+
+- name: Join a Proxmox VE cluster
+  community.proxmox.proxmox_cluster:
+    api_host: "{{ pve_join_ip }}"
+    api_user: "{{ hostvars[pve_join_host].ansible_user | default(ansible_user) }}@pam"
+    api_password: "{{ hostvars[pve_join_host].ansible_password | default(ansible_password) }}"
+    validate_certs: false
+    master_ip: "{{ pve_config_temp_master_ip }}"
+    cluster_name: "{{ pve_config_cluster_name }}"
+    fingerprint: "{{ pve_config_temp_join_fingerprint }}"
+    state: present
+  delegate_to: localhost
+  register: pve_join_result
+  when:
+    - not pve_config_temp_in_cluster.stat.exists
+
+- name: Wait for quorum after join on join target
+  ansible.builtin.command: pvecm status
+  delegate_to: "{{ pve_join_host }}"
+  register: pve_status
+  changed_when: false
+  retries: 60
+  delay: 2
+  until: pve_status.stdout is search("Quorate:\\s+Yes")
+  when: pve_join_result.changed | default(false)
+
+- name: Pause for 60 seconds so cluster would have time to sync
+  ansible.builtin.pause:
+    seconds: 60
+  when: pve_join_result.changed | default(false)
+...

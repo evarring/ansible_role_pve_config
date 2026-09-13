@@ -1,0 +1,13 @@
+---
+- name: Configure Proxmox VE roles
+  community.proxmox.proxmox_role:
+    api_host: "{{ ansible_host }}"
+    api_user: "{{ ansible_user }}@pam"
+    api_password: "{{ ansible_password }}"
+    roleid: "{{ item.roleid | default(omit) }}"
+    privs: "{{ item.privs | default(omit) }}"
+    validate_certs: false
+    state: "{{ item.state | default('present') }}"
+  loop: "{{ pve_config_user_roles | default([]) }}"
+  delegate_to: localhost
+...

@@ -1,0 +1,411 @@
+# SPDX-License-Identifier: MIT-0
+---
+# defaults file for pve_config
+
+pve_config_cluster_enabled: false
+
+# Put all no_log to a variable so you can enable logs for troubleshooting when needed
+pve_config_nolog: true
+
+# Used when cluster is to be configured
+# pve_config_host_group: "tspvecl01"
+# pve_config_cluster_name: "{{ pve_config_host_group }}"
+
+###############################################
+
+# node.yml
+
+# https://galaxy.ansible.com/ui/repo/published/community/proxmox/content/module/proxmox_node/
+
+# Manages the license subscription of the node.
+
+# pve_config_subscription:
+#   key: # The subscription license key.
+#   state: present # Whether the subscription should be present or absent.
+
+# Manages the resolving DNS options of the node.
+
+# pve_config_dns:
+#   dns1: "1.1.1.1" # The IP address of the first DNS resolver.
+#   dns2: "8.8.8.8" # The IP address of the second DNS resolver.
+#   search: "my.domain" # The default search domain. Required.
+
+# Manages the certificates on the node
+
+# pve_config_proxmox_certificates:
+#   cert: # The public certificate file (including chain) in PEM format.
+#   force: false # Overwrite existing custom or ACME certificate files.
+#   key: # The private key file in PEM format.
+#   restart: false # Restart pveproxy to rehash the new certificates.
+#   state: present # Defines the actions for the certificate.
+
+###############################################
+
+# repos.yml
+
+# By default it will configure Proxmox 9 VE no-subscription repositories
+
+pve_config_repository:
+  - name: pve-enterprise
+    types: [deb]
+    uris: https://enterprise.proxmox.com/debian/pve
+    suites: [trixie]
+    components: [pve-enterprise]
+    signed_by: /usr/share/keyrings/proxmox-archive-keyring.gpg
+    enabled: false
+  - name: ceph
+    types: [deb]
+    uris: https://enterprise.proxmox.com/debian/ceph-squid
+    suites: [trixie]
+    components: [enterprise]
+    signed_by: /usr/share/keyrings/proxmox-archive-keyring.gpg
+    enabled: false
+  - name: proxmox
+    types: [deb]
+    uris: http://download.proxmox.com/debian/pve
+    suites: [trixie]
+    components: [pve-no-subscription]
+    signed_by: /usr/share/keyrings/proxmox-archive-keyring.gpg
+    enabled: true
+
+###############################################
+
+# packages.yml
+
+pve_config_extra_packages:
+  - name: ifupdown2
+  - name: lvm2
+  - name: parted
+#   - name: lldpd # If you want more network information from the terminal.
+#   - name: multipath-tools # If you plan to use multipathing for SAN.
+#   - name: multipath-tools-boot # If you plan to use multipathing for SAN.
+#   - name: nvme-cli # If you plan to use NVMe over TCP or FC for example.
+#   - name: open-iscsi # If you plan to use iSCSI.
+
+###############################################
+
+# pools.yml
+
+# https://galaxy.ansible.com/ui/repo/published/community/proxmox/content/module/proxmox_pool/
+
+# pve_config_pools:
+#   - poolid: automation
+#     comment: Automation VMs
+#   - poolid: backups
+#     comment: Backups VMs
+#   - poolid: containers
+#     comment: LXC Containers
+#   - poolid: coreinfra
+#     comment: Core Infrastructure VMs
+#   - poolid: templates
+#     comment: Template VMs
+#   - poolid: test
+#     comment: Test VMs
+
+###############################################
+
+# sdn.yml
+
+# https://galaxy.ansible.com/ui/repo/published/community/proxmox/content/module/proxmox_zone/
+
+# pve_config_sdn_zones:
+#   - type: vlan
+#     zone: vlans # first zone in the list used as default for all vnets
+#     state: present
+#     bridge: vmbr0
+#   - type: vlan
+#     zone: vlansalso # first zone in the list used as default for all vnets
+#     state: present
+#     bridge: vmbr1
+
+# https://galaxy.ansible.com/ui/repo/published/community/proxmox/content/module/proxmox_vnet/
+
+# pve_config_sdn_zones[0].zone is used as the "zone" default value
+
+# pve_config_sdn_vnets:
+#   - alias: iamvlan
+#     vnet: "vlan45"
+#     tag: 45
+#   - alias: iamalsoavlan
+#     vnet: "vlan518"
+#     tag: 518
+#   - alias: noiamavlan
+#     vnet: "vlan29"
+#     tag: 29
+#   - alias: secondtime
+#     vnet: "vlan64"
+#     tag: 64
+#     zone: pve_config_sdn_zones[1].zone
+
+###############################################
+
+# user_roles.yml
+
+# https://galaxy.ansible.com/ui/repo/published/community/proxmox/content/module/proxmox_role/
+
+# pve_config_user_roles:
+#   - roleid: Test
+#     privs:
+#       - VM.PowerMgmt
+#       - VM.Console
+#   - roleid: Test2
+#     state: absent
+
+###############################################
+
+# user_groups.yml
+
+# https://galaxy.ansible.com/ui/repo/published/community/proxmox/content/module/proxmox_group/
+
+# pve_config_user_groups:
+#   - name: Administrators
+#     comment: Administrative access
+#   - name: ReadOnly
+#     comment: Read Only access
+
+###############################################
+
+# acl.yml
+
+# https://galaxy.ansible.com/ui/repo/published/community/proxmox/content/module/proxmox_access_acl/
+
+# pve_config_acls:
+#   - path: /
+#     roleid: Administrator
+#     ugid: Administrators
+#     type: group
+#   - path: /
+#     roleid: PVEAuditor
+#     ugid: ReadOnly
+#     type: group
+#   - path: /
+#     roleid: Administrator
+#     ugid: a-admin-proxmox-ve-main-ad
+#     type: group
+
+###############################################
+
+# user_linux.yml
+
+# pve_config_users_linux:
+#   - name: "ansible"
+#     comment: Automation user
+#     password: Passssdfjfhdsjh
+#     shell: /bin/bash
+#     groups: sudo
+#     append: true
+#     state: present
+#     sudo_rights:
+#       runas: "ALL"
+#       commands: "ALL"
+#       nopassword: true
+#       state: "present"
+#     create_home: true
+
+###############################################
+
+# user_pve.yml
+
+# https://galaxy.ansible.com/ui/repo/published/community/proxmox/content/module/proxmox_user/
+
+# pve_config_users_pve:
+#   - name: "username@pve"
+#     password: ahudoiagfsfj
+#     comment: Automation user
+#     firstname: "Automation"
+#     lastname: "User"
+#     groups:
+#       - Administrators
+#     enable: true
+#     state: present
+#   - name: "username2@pam"
+#     comment: Automation user 2
+#     firstname: "Automation2"
+#     lastname: "User"
+#     groups:
+#       - Administrators
+#     enable: true
+#     state: present
+
+###############################################
+
+# storage_local.yml
+
+# If you want to extend the root local to maximum available
+pve_config_extend_root: true
+
+# Volume groups to manage
+# pve_config_lvm_vgs:
+#   - name: ssd1test
+#     pvs: ["/dev/disk/by-id/scsi-355cd2e414ecaae6b"]
+#     state: absent
+#     force: true
+
+pve_config_lvm_vgs: []
+
+# Thick logical volumes
+# pve_config_lvm_lvs:
+#   - vg: pve
+#     lv: data_thick
+#     size: "200G"
+#     state: present
+#     opts: ""        # extra lvm options if needed
+
+pve_config_lvm_lvs: []
+
+# Thin pools
+# pve_config_lvm_thinpools:
+#   - vg: pve
+#     thinpool: data
+#     size: "800G"
+#     # optional:
+#     # metadata_size: "8G"
+#     # opts: "--chunksize 512K"
+#     state: present
+
+# pve_config_lvm_thinpools:
+#   - thinpool: ssd2thinpool
+#     vg: ssd2test
+#     state: absent
+
+pve_config_lvm_thinpools: []
+
+# Thin volumes (thin LVs inside a thin pool)
+# pve_config_lvm_thinvols:
+#   - vg: pve
+#     thinpool: data
+#     lv: vm-999-disk-0
+#     size: "100G"
+#     state: present
+#     # optional:
+#     # wipe_signatures: true
+
+pve_config_lvm_thinvols: []
+
+# Optional filesystem + mount management for LVs (thin or thick).
+# For Proxmox VM disks you usually do NOT format/mount on host.
+# pve_config_lvm_filesystems:
+#   - dev: "/dev/pve/data_thick"
+#     fstype: xfs
+#     opts: ""
+#     state: present
+# pve_config_lvm_mounts:
+#   - path: /mnt/data_thick
+#     src: "/dev/pve/data_thick"
+#     fstype: xfs
+#     opts: "defaults"
+#     state: mounted
+
+pve_config_lvm_filesystems: []
+pve_config_lvm_mounts: []
+
+###############################################
+
+# storage_datacenter.yml
+
+# https://galaxy.ansible.com/ui/repo/published/community/proxmox/content/module/proxmox_storage/
+# https://github.com/ansible-collections/community.proxmox/blob/main/plugins/modules/proxmox_storage.py
+
+# pve_config_storage:
+#   - name: "vol01"
+#     nodes: ["node1", "node2"]
+#     type: lvm
+#     content: ["images", "rootdir"]
+#     vgname: "vg01"
+#     shared: true
+#     snapshot_as_volume_chain: true
+#   - name: "vol02"
+#     nodes: ["node1"]
+#     type: lvm
+#     content: ["images", "rootdir"]
+#     vgname: "vg02"
+#     shared: false
+#     snapshot_as_volume_chain: false
+
+###############################################
+
+# storage_iscsi.yml
+
+# https://docs.ansible.com/projects/ansible/latest/collections/community/general/open_iscsi_module.html
+
+# pve_config_iscsi_targets:
+#   rescan: true
+#   target: iqn.1986-03.com.sun:02:f8c1f9e0-c3ec-ec84-c9c9-8bfb0cd5de3d
+
+###############################################
+
+# time.yml
+
+pve_config_time_sync_ntp_pool_servers:
+  - "0.no.pool.ntp.org"
+  - "1.no.pool.ntp.org"
+pve_config_time_sync_conf_path: "/etc/chrony/chrony.conf"
+pve_config_time_sync_rtcsync: true
+pve_config_time_sync_logs: true
+pve_config_time_sync_logdir: /var/log/chrony
+pve_config_time_sync_log: tracking measurements statistics
+
+pve_config_time_sync_timezone: "UTC"
+# pve_config_time_sync_hwclock: "UTC"
+
+###############################################
+
+# ha.yml
+
+# https://galaxy.ansible.com/ui/repo/published/community/proxmox/content/module/proxmox_cluster_ha_resources/
+
+pve_config_ha_resources: []
+
+# pve_config_ha_resources:
+#   - name: vm:100
+#     comment: "Core mining VM 100"
+#     hastate: started
+#     max_relocate: 1
+#     max_restart: 1
+#   - name: vm:101
+#     comment: "Core superserver VM 101"
+#     hastate: started
+#     max_relocate: 2
+#     max_restart: 1
+
+# https://galaxy.ansible.com/ui/repo/published/community/proxmox/content/module/proxmox_cluster_ha_rules/
+
+pve_config_ha_rules: []
+
+# pve_config_ha_rules:
+#   - name: keep-together
+#     type: resource-affinity
+#     comment: "Keep VM 100 and VM 101 together on the same node"
+#     affinity: positive
+#     resources: [ "vm:100", "vm:101" ]
+#     nodes: [ "tspvebck11lan" ]
+
+###############################################
+
+# realms_*.yml
+
+# https://galaxy.ansible.com/ui/repo/published/community/proxmox/content/module/proxmox_domain/
+# https://galaxy.ansible.com/ui/repo/published/community/proxmox/content/module/proxmox_domain_sync/
+
+# pve_config_realms:
+#   - realm: ldap
+#     type: ldap
+#     sync: true
+#     comment: LDAP Users
+#     domain: my.domain
+#     ldap_base_dn: DC=MY,DC=DOMAIN
+#     ldap_bind_dn: CN=svc_proxmox_ldap,OU=ServiceAccounts,OU=Users,DC=MY,DC=DOMAIN
+#     ldap_password: ffd
+#     ldap_primary_server: "dc1.my.domain"
+#     ldap_secondary_server: "dc2.my.domain"
+#     ldap_user_attr: userPrincipalName
+#     ldap_filter: (&(objectClass=user)(objectCategory=person)(memberOf=CN=a-admin-proxmox-ve-main,OU=Groups,DC=MY,DC=DOMAIN))
+#     ldap_group_filter: (&(objectClass=group)(cn=a-admin-proxmox-*))
+#     ldap_mode: ldap
+#     ldap_sync_defaults_options:
+#       scope: "both"
+#       enable-new: true
+#       remove-vanished: "acl;properties;entry"
+#     ldap_validate_certs: false
+#     sync_attributes: email=userPrincipalName
+...

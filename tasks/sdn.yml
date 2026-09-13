@@ -1,0 +1,29 @@
+---
+- name: Configure zones
+  community.proxmox.proxmox_zone:
+    api_host: "{{ ansible_host }}"
+    api_user: "{{ ansible_user }}@pam"
+    api_password: "{{ ansible_password }}"
+    validate_certs: false
+    type: "{{ item.type }}"
+    zone: "{{ item.zone }}"
+    ipam: "{{ item.ipam | default('pve') }}"
+    state: "{{ item.state | default('present') }}"
+    bridge: "{{ item.bridge }}"
+  loop: "{{ pve_config_sdn_zones | default([]) }}"
+  delegate_to: localhost
+
+- name: Configure VNets
+  community.proxmox.proxmox_vnet:
+    api_host: "{{ ansible_host }}"
+    api_user: "{{ ansible_user }}@pam"
+    api_password: "{{ ansible_password }}"
+    validate_certs: false
+    vnet: "{{ item.vnet }}"
+    alias: "{{ item.alias | default(omit) }}"
+    zone: "{{ item.zone | default(pve_config_sdn_zones[0].zone) }}"
+    tag: "{{ item.tag }}"
+    state: "{{ item.state | default('present') }}"
+  loop: "{{ pve_config_sdn_vnets | default([]) }}"
+  delegate_to: localhost
+...

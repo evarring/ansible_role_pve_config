@@ -1,0 +1,21 @@
+---
+- name: Configure Proxmox VE realm users
+  community.proxmox.proxmox_user:
+    api_host: "{{ ansible_host }}"
+    api_user: "{{ ansible_user }}@pam"
+    api_password: "{{ ansible_password }}"
+    userid: "{{ item.name }}"
+    comment: "{{ item.comment | default(omit) }}"
+    email: "{{ item.email | default(omit) }}"
+    enable: "{{ item.enable | default(omit) }}"
+    expire: "{{ item.expire | default(omit) }}"
+    firstname: "{{ item.firstname | default(omit) }}"
+    lastname: "{{ item.lastname | default(omit) }}"
+    groups: "{{ item.groups | default(omit) }}"
+    password: "{{ item.password | default(omit) }}"
+    validate_certs: false
+    state: present
+  loop: "{{ pve_config_users_pve | default([]) }}"
+  no_log: false
+  delegate_to: localhost
+...

@@ -1,0 +1,100 @@
+---
+- name: Create a Proxmox VE Cluster
+  community.proxmox.proxmox_cluster:
+    api_host: "{{ pve_config_temp_master_ip }}"
+    api_user: "{{ ansible_user }}@pam"
+    api_password: "{{ ansible_password }}"
+    validate_certs: false
+    cluster_name: "{{ pve_config_cluster_name }}"
+    link0: "{{ pve_config_temp_master_ip }}"
+    state: present
+  delegate_to: localhost
+  register: pve_config_temp_create_cluster
+
+- name: Wait until cluster is quorate on master
+  ansible.builtin.command: pvecm status
+  delegate_to: "{{ pve_config_temp_master_host }}"
+  register: pve_config_temp_pvecm_status
+  changed_when: false
+  retries: 60
+  delay: 2
+  until:
+    - pve_config_temp_pvecm_status.rc == 0
+    - pve_config_temp_pvecm_status.stdout is search("Cluster information")
+    - pve_config_temp_pvecm_status.stdout is search("Name:\\s+" ~ pve_config_cluster_name | regex_escape())
+    - pve_config_temp_pvecm_status.stdout is search("Quorate:\\s+Yes")
+  when: pve_config_temp_create_cluster.changed | default(false)
+
+- name: Wait for pmxcfs (/etc/pve) to be available
+  ansible.builtin.stat:
+    path: /etc/pve/corosync.conf
+  delegate_to: "{{ pve_config_temp_master_host }}"
+  register: pve_config_temp_pmxcfs
+  retries: 60
+  delay: 1
+  until: pve_config_temp_pmxcfs.stat.exists
+  when: pve_config_temp_create_cluster.changed | default(false)
+
+- name: Get join information (fingerprint, etc.) from the new cluster
+  community.proxmox.proxmox_cluster_join_info:
+    api_host: "{{ pve_config_temp_master_ip }}"
+    api_user: "{{ ansible_user }}@pam"
+    api_password: "{{ ansible_password }}"
+    validate_certs: false
+  register: pve_config_temp_join_info
+  delegate_to: localhost
+
+- name: Show fingerprint we will use (debug)
+  ansible.builtin.debug:
+    msg:
+      - "Join info: {{ pve_config_temp_join_info }}"
+    verbosity: 1
+
+- name: Cache nodelist from join info
+  ansible.builtin.set_fact:
+    pve_config_temp_join_nodelist: "{{ pve_config_temp_join_info.cluster_join.nodelist | default([]) }}"
+
+- name: Ensure join data contains at least one node
+  ansible.builtin.assert:
+    that: pve_config_temp_join_nodelist | length > 0
+    fail_msg: "No nodes found in pve_config_temp_join_info.cluster_join.nodelist"
+
+- name: Choose the master node entry from nodelist
+  vars:
+    _seed_short: "{{ pve_config_temp_master_host.split('.')[0] }}"
+  ansible.builtin.set_fact:
+    pve_config_temp_chosen_node: >-
+      {{
+        (
+          pve_config_temp_join_nodelist
+          | selectattr('name','equalto', (pve_config_temp_join_info.cluster_join.preferred_node | default(_seed_short)))
+          | list
+          | first
+        )
+        | default(
+            (
+              pve_config_temp_join_nodelist
+              | selectattr('name','equalto', _seed_short)
+              | list
+              | first
+            ),
+            true
+          )
+        | default(pve_config_temp_join_nodelist[0], true)
+      }}
+
+- name: Show fingerprint we will use (debug)
+  ansible.builtin.debug:
+    msg:
+      - "Cluster name: {{ pve_config_cluster_name }}"
+      - "Primary host: {{ pve_config_temp_chosen_node.pve_addr }}"
+      - "Primary fingerprint: {{ pve_config_temp_chosen_node.pve_fp }}"
+    verbosity: 1
+
+- name: Share join data with all (other) nodes
+  ansible.builtin.set_fact:
+    pve_config_temp_join_fingerprint: "{{ pve_config_temp_chosen_node.pve_fp }}"
+  delegate_to: "{{ item }}"
+  delegate_facts: true
+  loop: "{{ groups[pve_config_host_group] }}"
+...

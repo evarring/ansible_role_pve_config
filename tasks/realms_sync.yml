@@ -1,0 +1,15 @@
+---
+- name: Synchronize realms
+  community.proxmox.proxmox_domain_sync:
+    api_host: "{{ ansible_host }}"
+    api_user: "{{ ansible_user }}@pam"
+    api_password: "{{ ansible_password }}"
+    validate_certs: false
+    realm: "{{ item.realm | default(omit) }}"
+    enable_new: "{{ item.enable_new | default(omit) }}"
+    scope: "{{ item.scope | default('both') }}"
+    removed_vanished: "{{ item.ldap_sync_defaults_options.remove_vanished | default(omit) }}"
+  loop: "{{ pve_config_realms | default([]) }}"
+  no_log: "{{ pve_config_nolog }}"
+  delegate_to: localhost
+...
