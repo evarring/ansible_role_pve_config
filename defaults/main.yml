@@ -404,6 +404,32 @@ pve_config_ha_rules: []
 
 ###############################################
 
+# network.yml
+
+# pve_config_interfaces:
+#   - iface: nic0
+#     type: eth
+#   - iface: nic1
+#     type: eth
+#   - iface: vmbr0
+#     type: bridge
+#     bridge_ports: nic0
+#     cidr: "{{ ansible_host }}/24"
+#     gateway: 10.0.20.1
+#   - iface: vmbr1
+#     type: bridge
+#     bridge_ports: nic1
+#     bridge_vlan_aware: true
+#     bridge_vids: "10 20 30 40 50 60 70"
+#   - iface: vmbr1.10
+#     type: vlan
+#   - iface: vmbr1.20
+#     type: vlan
+#   - iface: vmbr1.30
+#     type: vlan
+
+###############################################
+
 # realms_*.yml
 
 # https://galaxy.ansible.com/ui/repo/published/community/proxmox/content/module/proxmox_domain/

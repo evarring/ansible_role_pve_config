@@ -19,4 +19,17 @@
     name: "chronyd"
     state: restarted
   become: true
+
+- name: Reload network
+  ansible.builtin.command: ifreload -a
+
+- name: Apply network
+  community.proxmox.proxmox_node_network:
+    api_host: "{{ ansible_host }}"
+    api_user: "{{ ansible_user }}@pam"
+    api_password: "{{ ansible_password }}"
+    validate_certs: false
+    node: "{{ inventory_hostname.split('.')[0] }}"
+    state: apply
+  delegate_to: localhost
 ...

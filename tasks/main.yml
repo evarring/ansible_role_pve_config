@@ -10,6 +10,15 @@
       tags:
         - node
 
+- name: Configure network
+  ansible.builtin.include_tasks: network.yml
+  tags: network
+  args:
+    apply:
+      tags:
+        - network
+  when: pve_config_interfaces is defined
+
 - name: Configure repositories per host
   ansible.builtin.include_tasks: repos.yml
   tags: update, repo

@@ -1,0 +1,37 @@
+---
+- name: Set ordered interfaces
+  ansible.builtin.set_fact:
+    pve_config_ordered_interfaces: >-
+      {{ (pve_config_interfaces | selectattr('type', 'eq', 'eth')    | list)
+       + (pve_config_interfaces | selectattr('type', 'eq', 'bond')   | list)
+       + (pve_config_interfaces | selectattr('type', 'eq', 'bridge') | list)
+       + (pve_config_interfaces | selectattr('type', 'eq', 'vlan')   | list) }}
+
+- name: Stage interface configuration
+  community.proxmox.proxmox_node_network:
+    api_host: "{{ ansible_host }}"
+    api_user: "{{ ansible_user }}@pam"
+    api_password: "{{ ansible_password }}"
+    validate_certs: false
+    node: "{{ inventory_hostname.split('.')[0] }}"
+    state: present
+    iface: "{{ item.iface }}"
+    iface_type: "{{ item.type }}"
+    autostart: "{{ item.autostart | default(true) }}"
+    cidr: "{{ item.cidr | default(omit) }}"
+    gateway: "{{ item.gateway | default(omit) }}"
+    mtu: "{{ item.mtu | default(omit) }}"
+    comments: "{{ item.comments | default(omit) }}"
+    slaves: "{{ item.slaves | default(omit) }}"
+    bond_mode: "{{ item.bond_mode | default(omit) }}"
+    bond_xmit_hash_policy: "{{ item.bond_xmit_hash_policy | default(omit) }}"
+    bond_primary: "{{ item.bond_primary | default(omit) }}"
+    bridge_ports: "{{ item.bridge_ports | default(omit) }}"
+    bridge_vlan_aware: "{{ item.bridge_vlan_aware | default(omit) }}"
+    bridge_vids: "{{ item.bridge_vids | default(omit) }}"
+  loop: "{{ pve_config_ordered_interfaces }}"
+  loop_control:
+    label: "{{ item.iface }}"
+  delegate_to: localhost
+  notify: Apply network
+...
