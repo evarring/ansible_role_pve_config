@@ -1,0 +1,166 @@
+---
+### Configuring volumes
+
+- name: Create physical volumes if needed (shared)
+  community.general.lvm_pv:
+    device: "/dev/mapper/{{ item.alias }}"
+    state: "{{ item.state | default('present') }}"
+  when:
+    - inventory_hostname == pve_config_temp_master_host
+    - item.state | default('present') != "absent"
+  loop: "{{ pve_config_shared_multipath_bindings | default([]) }}"
+  register: pve_config_shared_pv_creation_result
+
+- name: Create physical volumes if needed (local)
+  community.general.lvm_pv:
+    device: "/dev/mapper/{{ item.alias }}"
+    state: "{{ item.state | default('present') }}"
+  when:
+    - item.state | default('present') != "absent"
+  loop: "{{ pve_config_local_multipath_bindings | default([]) }}"
+  register: pve_config_local_pv_creation_result
+
+- name: Flush handlers
+  ansible.builtin.meta: flush_handlers
+  when:
+    pve_config_shared_pv_creation_result.changed # noqa: no-handler
+
+- name: Flush handlers
+  ansible.builtin.meta: flush_handlers
+  when:
+    pve_config_local_pv_creation_result.changed # noqa: no-handler
+
+- name: Configure Volume Group (VG) if not exists for local
+  community.general.lvg:
+    vg: "{{ item.vg }}"
+    pvs: "/dev/mapper/{{ item.alias }}"
+    state: "{{ item.state | default('present') }}"
+  when:
+    - item.vg not in ansible_facts.lvm.vgs
+  loop: "{{ pve_config_local_multipath_bindings | default([]) }}"
+  register: pve_config_local_vg_creation_result
+  notify:
+    - Pause for 5 seconds
+
+- name: Configure Volume Group (VG) if not exists for shared
+  community.general.lvg:
+    vg: "{{ item.vg }}"
+    pvs: "/dev/mapper/{{ item.alias }}"
+    state: "{{ item.state | default('present') }}"
+  when:
+    - item.vg not in ansible_facts.lvm.vgs
+    - inventory_hostname == pve_config_temp_master_host
+  loop: "{{ pve_config_shared_multipath_bindings | default([]) }}"
+  register: pve_config_shared_vg_creation_result
+  notify:
+    - Pause for 5 seconds
+
+- name: Flush handlers
+  ansible.builtin.meta: flush_handlers
+  when: pve_config_shared_vg_creation_result.changed or pve_config_local_vg_creation_result.changed # noqa: no-handler
+
+#### Removal tasks
+
+- name: Remove Volume Group (VG) if needed for local storage
+  community.general.lvg:
+    vg: "{{ item.vg }}"
+    pvs: "/dev/mapper/{{ item.alias }}"
+    state: "{{ item.state | default('present') }}"
+    force: "{{ item.force | default('false') }}"
+  when:
+    - item.vg in ansible_facts.lvm.vgs
+    - item.state is defined
+    - item.state == 'absent'
+  loop: "{{ pve_config_local_multipath_bindings | default([]) }}"
+  register: pve_config_local_vg_creation_result
+  notify:
+    - Pause for 5 seconds
+
+- name: Remove Volume Group (VG) if needed for shared storage
+  community.general.lvg:
+    vg: "{{ item.vg }}"
+    pvs: "/dev/mapper/{{ item.alias }}"
+    state: "{{ item.state | default('present') }}"
+    force: "{{ item.force | default('false') }}"
+  when:
+    - item.vg in ansible_facts.lvm.vgs
+    - item.state is defined
+    - item.state == 'absent'
+    - inventory_hostname == pve_config_temp_master_host
+  loop: "{{ pve_config_shared_multipath_bindings | default([]) }}"
+  register: pve_config_shared_vg_creation_result
+  notify:
+    - Pause for 5 seconds
+
+- name: Flush handlers
+  ansible.builtin.meta: flush_handlers
+  when: pve_config_shared_vg_creation_result.changed # noqa: no-handler
+
+- name: Remove physical volumes if needed (shared)
+  community.general.lvm_pv:
+    device: "/dev/mapper/{{ item.alias }}"
+    state: "{{ item.state | default('present') }}"
+    force: "{{ item.force | default('false') }}"
+  when:
+    - item.state is defined
+    - item.state == 'absent'
+    - inventory_hostname == pve_config_temp_master_host
+  loop: "{{ pve_config_shared_multipath_bindings | default([]) }}"
+
+- name: Remove physical volumes if needed (local)
+  community.general.lvm_pv:
+    device: "/dev/mapper/{{ item.alias }}"
+    state: "{{ item.state | default('present') }}"
+    force: "{{ item.force | default('false') }}"
+  when:
+    - item.state is defined
+    - item.state == 'absent'
+  loop: "{{ pve_config_local_multipath_bindings | default([]) }}"
+
+- name: Flush handlers
+  ansible.builtin.meta: flush_handlers
+  when: pve_config_shared_vg_creation_result.changed # noqa: no-handler
+
+#### Removal tasks end
+
+- name: Run pvscan on all nodes to get the latest changes
+  ansible.builtin.command: pvscan --cache
+  register: pve_config_temp_pvscan_output
+  notify:
+    - Pause for 5 seconds
+
+- name: Flush handlers
+  ansible.builtin.meta: flush_handlers
+  when: pve_config_temp_pvscan_output.changed # noqa: no-handler
+
+- name: Print pvscan output
+  ansible.builtin.debug:
+    msg: "{{ pve_config_temp_pvscan_output.stdout_lines }}"
+    verbosity: 1
+
+- name: Get list of logical local volumes
+  ansible.builtin.command: lvs --noheadings -o lv_name {{ item.vg }}
+  register: pve_config_lvs_output_local
+  changed_when: false
+  failed_when: false
+  loop: "{{ pve_config_local_multipath_bindings | default([]) }}"
+  when: pve_config_local_multipath_bindings is defined
+
+- name: Get list of logical shared volumes
+  ansible.builtin.command: lvs --noheadings -o lv_name {{ item.vg }}
+  register: pve_config_lvs_output_shared
+  changed_when: false
+  failed_when: false
+  loop: "{{ pve_config_shared_multipath_bindings | default([]) }}"
+  when: pve_config_shared_multipath_bindings is defined
+
+- name: Print output of lvs command for shared
+  ansible.builtin.debug:
+    var: pve_config_lvs_output_shared.results
+    verbosity: 1
+
+- name: Print output of lvs command for local
+  ansible.builtin.debug:
+    var: pve_config_lvs_output_local.results
+    verbosity: 1
+...

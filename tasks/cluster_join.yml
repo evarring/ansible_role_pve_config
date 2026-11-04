@@ -11,6 +11,7 @@
     api_user: "{{ hostvars[pve_join_host].ansible_user | default(ansible_user) }}@pam"
     api_password: "{{ hostvars[pve_join_host].ansible_password | default(ansible_password) }}"
     validate_certs: false
+    master_api_password: "{{ pve_config_master_node_password | default(omit) }}"
     master_ip: "{{ pve_config_temp_master_ip }}"
     cluster_name: "{{ pve_config_cluster_name }}"
     fingerprint: "{{ pve_config_temp_join_fingerprint }}"

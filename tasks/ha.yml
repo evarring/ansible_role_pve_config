@@ -30,4 +30,51 @@
     disable: "{{ item.disable | default(false) }}"
   delegate_to: localhost
   loop: "{{ pve_config_ha_rules | default([]) }}"
+
+- name: Ensure datacenter.cfg exists
+  ansible.builtin.file:
+    path: /etc/pve/datacenter.cfg
+    state: touch
+    owner: root
+    group: www-data
+    mode: "0640"
+    modification_time: preserve
+    access_time: preserve
+  when: >-
+    pve_config_crs_config is defined or
+    pve_config_ha_config is defined or
+    pve_config_migration_network is defined
+
+- name: Set CRS settings
+  ansible.builtin.lineinfile:
+    path: /etc/pve/datacenter.cfg
+    regexp: '^crs:'
+    line: "crs: {{ pve_config_crs_config }}"
+    create: true
+    owner: root
+    group: www-data
+    mode: "0640"
+  when: pve_config_crs_config is defined
+
+- name: Set HA settings
+  ansible.builtin.lineinfile:
+    path: /etc/pve/datacenter.cfg
+    regexp: '^ha:'
+    line: "ha: {{ pve_config_ha_config }}"
+    create: true
+    owner: root
+    group: www-data
+    mode: "0640"
+  when: pve_config_ha_config is defined
+
+- name: Set migration network config
+  ansible.builtin.lineinfile:
+    path: /etc/pve/datacenter.cfg
+    regexp: '^migration:'
+    line: "migration: {{ pve_config_migration_network }}"
+    create: true
+    owner: root
+    group: www-data
+    mode: "0640"
+  when: pve_config_migration_network is defined
 ...

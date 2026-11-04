@@ -30,4 +30,5 @@
         nopassword: "{{ item.sudo_rights.nopassword | default(omit) }}"
         state: "{{ item.state | default('present') }}"
       loop: "{{ pve_config_users_linux | default([]) }}"
+      no_log: "{{ pve_config_nolog }}"
 ...

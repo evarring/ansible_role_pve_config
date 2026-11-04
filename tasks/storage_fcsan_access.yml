@@ -1,0 +1,87 @@
+---
+- name: Template multipath.conf
+  ansible.builtin.template:
+    src: templates/multipath.conf.j2
+    dest: /etc/multipath.conf
+    mode: '0644'
+  notify:
+    - Restart multipathd
+    - Rescan SCSI bus
+    - Multipath refresh
+    - Reboot host
+  register: pve_config_mp_template_result
+
+- name: Deploy lvm.conf
+  ansible.builtin.template:
+    src: templates/lvm.conf.j2
+    dest: /etc/lvm/lvm.conf
+    mode: '0644'
+  notify:
+    - Run pvscan
+    - Update initramfs
+    - Reboot host
+  register: pve_config_lvm_template_result
+
+- name: Add wwids to multipath with multipath -a
+  ansible.builtin.command: "multipath -a {{ item.wwid }}"
+  register: pve_config_mp_add_output
+  changed_when: false
+  failed_when: false
+  loop: "{{ pve_config_shared_multipath_bindings | default([]) }}"
+  when: pve_config_shared_multipath_bindings is defined
+  notify:
+    - Multipath refresh
+
+- name: Flush handlers
+  ansible.builtin.meta: flush_handlers
+  when: pve_config_mp_template_result.changed or pve_config_lvm_template_result.changed # noqa: no-handler
+
+- name: Print facts
+  ansible.builtin.debug:
+    var: ansible_facts.lvm
+    verbosity: 0
+
+###
+
+- name: Run pvscan on all nodes to get the latest changes
+  ansible.builtin.command: pvscan --cache
+  register: pve_config_temp_pvscan_output
+  notify:
+    - Pause for 5 seconds
+  changed_when: false
+
+- name: Flush handlers
+  ansible.builtin.meta: flush_handlers
+  when: pve_config_temp_pvscan_output.changed # noqa: no-handler
+
+- name: Print pvscan output
+  ansible.builtin.debug:
+    msg: "{{ pve_config_temp_pvscan_output.stdout_lines }}"
+    verbosity: 1
+
+- name: Get list of logical local volumes
+  ansible.builtin.command: lvs --noheadings -o lv_name {{ item.vg }}
+  register: pve_config_lvs_output_local
+  changed_when: false
+  failed_when: false
+  loop: "{{ pve_config_local_multipath_bindings | default([]) }}"
+  when: pve_config_local_multipath_bindings is defined
+
+- name: Get list of logical shared volumes
+  ansible.builtin.command: lvs --noheadings -o lv_name {{ item.vg }}
+  register: pve_config_lvs_output_shared
+  changed_when: false
+  failed_when: false
+  loop: "{{ pve_config_shared_multipath_bindings | default([]) }}"
+  when: pve_config_shared_multipath_bindings is defined
+
+- name: Print output of lvs command for shared
+  ansible.builtin.debug:
+    var: pve_config_lvs_output_shared.results
+    verbosity: 1
+
+- name: Print output of lvs command for local
+  ansible.builtin.debug:
+    var: pve_config_lvs_output_local.results
+    verbosity: 1
+...

@@ -38,9 +38,17 @@
         - packages
 
 - name: Cluster master and node info activities
-  when: pve_config_cluster_enabled is true
-  tags: cluster, always
+  when: pve_config_cluster_enabled | bool
+  tags: always
   block:
+    - name: Ensure cluster host group exists in inventory
+      ansible.builtin.assert:
+        that:
+          - pve_config_host_group in groups
+          - groups[pve_config_host_group] | length > 0
+        fail_msg: "Inventory group '{{ pve_config_host_group }}' is missing or empty"
+        quiet: true
+
     - name: Get master ip and secondary node info from inventory
       ansible.builtin.set_fact:
         pve_config_temp_master_host: "{{ groups[pve_config_host_group][0] }}"
@@ -56,7 +64,6 @@
                   list)
             )
           }}
-      when: pve_config_host_group is defined
 
     - name: Print out defined vars for double-checking
       ansible.builtin.debug:
@@ -68,17 +75,33 @@
         verbosity: 1
 
 - name: Cluster creation and join actions
-  when: pve_config_cluster_enabled is true
-  tags: cluster, never
+  when: pve_config_cluster_enabled | bool
+  tags: clustercreate, never
   block:
     - name: Cluster creation
       ansible.builtin.include_tasks: cluster_create.yml
       args:
         apply:
           tags:
-            - cluster
+            - clustercreate
       when: pve_config_temp_master_host == inventory_hostname
 
+- name: Cluster join info actions
+  when: pve_config_cluster_enabled | bool
+  tags: clusterjoin, never
+  block:
+    - name: Cluster join info (fingerprint)
+      ansible.builtin.include_tasks: cluster_join_info.yml
+      args:
+        apply:
+          tags:
+            - clusterjoin
+      when: pve_config_temp_master_host == inventory_hostname
+
+- name: Cluster join actions
+  when: pve_config_cluster_enabled | bool
+  tags: clusterjoin, never
+  block:
     - name: Cluster join
       ansible.builtin.include_tasks: cluster_join.yml
       when: pve_config_temp_master_host == inventory_hostname
@@ -90,12 +113,12 @@
       args:
         apply:
           tags:
-            - cluster
+            - clusterjoin
 
 - name: Set master host to target host if cluster not enabled
   ansible.builtin.set_fact:
     pve_config_temp_master_host: "{{ inventory_hostname }}"
-  when: pve_config_cluster_enabled is false
+  when: not (pve_config_cluster_enabled | bool)
   tags: always
 
 - name: Configure pools

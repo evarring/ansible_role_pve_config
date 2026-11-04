@@ -1,0 +1,56 @@
+defaults {
+    user_friendly_names     no
+    find_multipaths         strict
+    polling_interval        5
+    checker_timeout         15
+    rr_min_io               100
+    rr_weight               uniform
+}
+
+blacklist {
+{% for f in pve_config_global_filters %}
+{% if f.state|default('reject')|lower == 'accept' %}
+    devnode "^{{ f.volume }}[a]"
+{% endif %}
+{% endfor %}
+}
+
+{% if (pve_config_local_multipath_bindings is defined and pve_config_local_multipath_bindings) 
+      or (pve_config_shared_multipath_bindings is defined and pve_config_shared_multipath_bindings) %}
+multipaths {
+{% if pve_config_local_multipath_bindings is defined %}
+{% for entry in pve_config_local_multipath_bindings %}
+    multipath {
+        wwid  "{{ entry.wwid | replace(':', '') | lower }}"
+        alias "{{ entry.alias }}"
+    }
+{% endfor %}
+{% endif %}
+{% if pve_config_shared_multipath_bindings is defined %}
+{% for entry in pve_config_shared_multipath_bindings %}
+    multipath {
+        wwid  "{{ entry.wwid | replace(':', '') | lower }}"
+        alias "{{ entry.alias }}"
+    }
+{% endfor %}
+{% endif %}
+}
+{% endif %}
+
+devices {
+    device {
+        vendor DellEMC
+        product PowerStore
+        detect_prio "yes"
+        path_selector "queue-length 0"
+        path_grouping_policy "group_by_prio"
+        path_checker tur
+        failback immediate
+        fast_io_fail_tmo 5
+        no_path_retry 3
+        rr_min_io_rq 1
+        max_sectors_kb 1024
+        dev_loss_tmo 10
+        hardware_handler "1 alua"
+    }
+}

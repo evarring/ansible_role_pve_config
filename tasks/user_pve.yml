@@ -16,6 +16,6 @@
     validate_certs: false
     state: present
   loop: "{{ pve_config_users_pve | default([]) }}"
-  no_log: false
+  no_log: "{{ pve_config_nolog }}"
   delegate_to: localhost
 ...
